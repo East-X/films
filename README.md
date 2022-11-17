@@ -1,5 +1,4 @@
-# films
-Films app
+# Films app
 A film list app illustrating Jetpack Compose UI and network data fetching.
 
 This sample has screens with
