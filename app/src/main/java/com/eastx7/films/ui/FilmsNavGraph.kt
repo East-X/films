@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -14,6 +17,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.eastx7.films.data.Constants
 import com.eastx7.films.viewmodels.FilmItemViewModel
 import com.eastx7.films.viewmodels.FilmListViewModel
 
@@ -24,11 +28,11 @@ fun FilmNavGraph(
     startDestination: String,
 ) {
 //TODO: Remove in production
-    navController.addOnDestinationChangedListener { controller, destination, arguments ->
-        destination.route?.let { navigatedRoute ->
-            Log.d("DestinationChanged", "Route: " + navigatedRoute.toString())
-        }
-    }
+//    navController.addOnDestinationChangedListener { controller, destination, arguments ->
+//        destination.route?.let { navigatedRoute ->
+//            Log.d("DestinationChanged", "Route: $navigatedRoute")
+//        }
+//    }
 
     NavHost(
         navController = navController,
@@ -45,6 +49,7 @@ fun FilmNavGraph(
             )
         ) { backStackEntry ->
             val itemViewModel: FilmItemViewModel = hiltViewModel()
+            val item by itemViewModel.liveFilm.observeAsState(initial = null)
             val idItem =
                 backStackEntry.arguments?.getString(NavDestinations.FilmItem.argument0)
                     ?: return@composable
@@ -52,12 +57,12 @@ fun FilmNavGraph(
             val intent = remember {
                 Intent(
                     Intent.ACTION_VIEW,
-                    Uri.parse("https://www.imdb.com/title/$idItem")
+                    Uri.parse(Constants.IMDB_TITLE_URL + idItem)
                 )
             }
             val context = LocalContext.current
             FilmItemScreen(
-                viewModel = itemViewModel,
+                item = item,
                 onOpenImdbLink = {
                     context.startActivity(intent)
                 },
@@ -72,8 +77,15 @@ fun FilmNavGraph(
         ) { _ ->
 
             val listViewModel: FilmListViewModel = hiltViewModel()
+            val showDialogSearch: Boolean by listViewModel.showDialogSearch.collectAsState()
+            val listLoaded: Boolean by listViewModel.listLoaded.collectAsState()
+            val itemsList by listViewModel.liveListFilms.observeAsState(initial = listOf())
+            val resourceEmptyList: Int by listViewModel.textEmptyList.collectAsState()
+
             FilmListScreen(
-                viewModel = listViewModel,
+                listLoaded = listLoaded,
+                itemsList = itemsList,
+                resourceEmptyList = resourceEmptyList,
                 onSearchTitleChanged = { title ->
                     listViewModel.textFilmTitleChanged(title)
                 },
@@ -86,6 +98,7 @@ fun FilmNavGraph(
                     savedStateHandle?.set(NavDestinations.FilmItem.argument0, it.id)
                     navController.navigate("${NavDestinations.FilmItem.route}/${it.id}")
                 },
+                showDialogSearch = showDialogSearch,
                 onSearch = {
                     listViewModel.openDialogSearch()
                 },

@@ -9,33 +9,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material3.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment.Companion.BottomEnd
 import androidx.compose.ui.Alignment.Companion.Center
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.bumptech.glide.integration.compose.GlideLazyListPreloader
 import com.eastx7.films.R
+import com.eastx7.films.data.Constants.THUMBNAIL_DIMENSION
 import com.eastx7.films.data.OmdbFilms
 import com.eastx7.films.theme.*
 import com.eastx7.films.uiutilities.DialogSearch
-import com.eastx7.films.viewmodels.FilmItemViewModel
-import com.eastx7.films.viewmodels.FilmListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilmListScreen(
-    viewModel: FilmListViewModel,
+    listLoaded: Boolean,
+    itemsList: List<OmdbFilms>,
+    resourceEmptyList: Int,
     onItemClick: (OmdbFilms) -> Unit,
+    showDialogSearch: Boolean,
     onSearchTitleChanged: (String) -> Unit,
     onSearchQntChanged: (Int) -> Unit,
     onDismissSearchDialog: () -> Unit,
@@ -43,7 +48,7 @@ fun FilmListScreen(
     onSearch: () -> Unit,
 ) {
 
-    val showDialogSearch: Boolean by viewModel.showDialogSearch.collectAsState()
+
     DialogSearch(
         show = showDialogSearch,
         title = stringResource(R.string.search),
@@ -62,7 +67,9 @@ fun FilmListScreen(
 
         content = { innerPadding ->
             BodyList(
-                viewModel = viewModel,
+                listLoaded = listLoaded,
+                itemsList = itemsList,
+                resourceEmptyList = resourceEmptyList,
                 onItemClick = onItemClick,
                 innerPadding = innerPadding
             )
@@ -73,16 +80,16 @@ fun FilmListScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilmItemScreen(
+    item: OmdbFilms?,
     onOpenImdbLink: () -> Unit,
     onDismiss: () -> Unit,
-    viewModel: FilmItemViewModel
 ) {
 
     Scaffold(
         topBar = { ItemTopBar(onDismiss) },
         content = { innerPadding ->
             BodyItem(
-                viewModel = viewModel,
+                item = item,
                 innerPadding = innerPadding,
                 onOpenImdbLink = onOpenImdbLink
             )
@@ -92,23 +99,24 @@ fun FilmItemScreen(
 
 @Composable
 fun BodyList(
-    viewModel: FilmListViewModel,
+    listLoaded: Boolean,
+    itemsList: List<OmdbFilms>,
+    resourceEmptyList: Int,
     onItemClick: (OmdbFilms) -> Unit,
     innerPadding: PaddingValues
 ) {
-    val listLoaded: Boolean by viewModel.listLoaded.collectAsState()
     if (listLoaded) {
-        val itemsList by viewModel.liveListFilms.observeAsState(initial = listOf())
         BodyListItems(
             itemsList = itemsList,
             innerPadding = innerPadding,
             onItemClick = onItemClick
         )
     } else {
-        BodyListEmpty(viewModel = viewModel)
+        BodyListEmpty(resourceEmptyList = resourceEmptyList)
     }
 }
 
+@OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun BodyListItems(
     innerPadding: PaddingValues,
@@ -121,29 +129,45 @@ fun BodyListItems(
             .fillMaxWidth()
             .statusBarsPadding(),
     ) {
+        val state = rememberLazyListState()
+
+        val posterWidth = LocalConfiguration.current.screenWidthDp.dp / 3
+        val posterHeight = LocalConfiguration.current.screenHeightDp.dp / 3
+        val posterDimensions = if (posterWidth < posterHeight) posterWidth else posterHeight
+
         LazyColumn(
             modifier = Modifier.padding(start = 7.dp, end = 7.dp),
             verticalArrangement = Arrangement.Center,
+            state = state
         ) {
             items(itemsList)
             { item ->
                 BodyListItem(
                     item = item,
+                    posterDimensions = posterDimensions,
                     onItemClick = onItemClick,
                 )
             }
+        }
+        GlideLazyListPreloader(
+            state = state,
+            data = itemsList,
+            size = Size(THUMBNAIL_DIMENSION.toFloat(), THUMBNAIL_DIMENSION.toFloat()),
+            numberOfItemsToPreload = 15,
+            fixedVisibleItemCount = 5,
+        ) { item, requestBuilder ->
+            requestBuilder.load(item.poster)
         }
     }
 }
 
 @Composable
 fun BodyListEmpty(
-    viewModel: FilmListViewModel
+    resourceEmptyList: Int
 ) {
     Box(Modifier.fillMaxSize()) {
-        val textEmptyList: Int by viewModel.textEmptyList.collectAsState()
         Text(
-            text = stringResource(textEmptyList).uppercase(),
+            text = stringResource(resourceEmptyList).uppercase(),
             textAlign = TextAlign.Center,
             modifier = Modifier.align(Center)
         )
@@ -154,15 +178,14 @@ fun BodyListEmpty(
 @Composable
 fun BodyListItem(
     item: OmdbFilms,
+    posterDimensions: Dp,
     onItemClick: (OmdbFilms) -> Unit,
 ) {
     Box(
         Modifier
             .padding(3.dp)
     ) {
-        val posterWidth = LocalConfiguration.current.screenWidthDp.dp / 3
-        val posterHeight = LocalConfiguration.current.screenHeightDp.dp / 3
-        val posterDimensions = if (posterWidth < posterHeight) posterWidth else posterHeight
+
         Card(
             onClick = { onItemClick(item) },
             modifier = Modifier
@@ -197,7 +220,7 @@ fun BodyListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                tint = Red200,
+                tint = unmarked_icon,
                 imageVector = Icons.Filled.ChatBubble,
                 contentDescription = null
             )
@@ -210,9 +233,9 @@ fun BodyListItem(
             ) {
                 Icon(
                     tint = if (isFavorite) {
-                        Red900
+                        marked_favorite
                     } else {
-                        Red200
+                        unmarked_icon
                     },
                     imageVector = if (isFavorite) {
                         Icons.Filled.Favorite
@@ -229,11 +252,11 @@ fun BodyListItem(
 
 @Composable
 fun BodyItem(
-    viewModel: FilmItemViewModel,
+    item: OmdbFilms?,
     onOpenImdbLink: () -> Unit,
     innerPadding: PaddingValues
 ) {
-    val item by viewModel.liveFilm.observeAsState(initial = null)
+
     Column(
         modifier = Modifier
             .padding(innerPadding)
@@ -308,9 +331,9 @@ fun BodyItemCard(
             ) {
                 Icon(
                     tint = if (isFavorite) {
-                        Red900
+                        marked_favorite
                     } else {
-                        Red200
+                        unmarked_icon
                     },
                     imageVector = if (isFavorite) {
                         Icons.Filled.Favorite
@@ -349,7 +372,6 @@ fun BodyItemComment() {
         placeholder = {
             Text(
                 text = stringResource(R.string.write_your_comment),
-                style = FilmTypography.bodySmall.copy(color = Color.DarkGray)
             )
         },
         singleLine = false,
@@ -369,23 +391,21 @@ fun BodyItemComment() {
 fun ItemTopBar(
     onDismiss: () -> Unit
 ) {
-    TopBarTheme {
-        TopAppBar(
-            title = {
-                Text(
-                    text = stringResource(R.string.movie_info),
+    TopAppBar(
+        title = {
+            Text(
+                text = stringResource(R.string.movie_info),
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Default.ChevronLeft,
+                    contentDescription = "back"
                 )
-            },
-            navigationIcon = {
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.ChevronLeft,
-                        contentDescription = "back"
-                    )
-                }
             }
-        )
-    }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -393,23 +413,93 @@ fun ItemTopBar(
 fun FilmListTopBar(
     onSearch: () -> Unit,
 ) {
-    TopBarTheme {
-        CenterAlignedTopAppBar(
-            title = {
-                Text(
-                    stringResource(R.string.movies),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+    CenterAlignedTopAppBar(
+        title = {
+            Text(
+                stringResource(R.string.movies),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onSearch) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search"
                 )
-            },
-            navigationIcon = {
-                IconButton(onClick = onSearch) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = "Search"
-                    )
-                }
             }
+        }
+    )
+}
+
+fun mockFilm(): OmdbFilms {
+    return OmdbFilms(
+        title = "Transformers: The Last Knight",
+        year = "2017",
+        id = "tt3371366",
+        type = "movie",
+        poster = "https://m.media-amazon.com/images/M/MV5BN2YwOWM4ODgtZTMzMi00ZmFmLTk5NTEtNmY4ZDcwNzQxNDhjXkEyXkFqcGdeQXVyNTI0NzAyNjY@._V1_SX300.jpg"
+    )
+}
+
+@Composable
+@Preview(name = "FilmItem Light Theme")
+private fun FilmItemPreviewLight() {
+    FilmTheme(useDarkTheme = false) {
+        FilmItemScreen(
+            item = mockFilm(),
+            onOpenImdbLink = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@Composable
+@Preview(name = "FilmItem Dark Theme")
+private fun FilmItemPreviewDark() {
+    FilmTheme(useDarkTheme = true) {
+        FilmItemScreen(
+            item = mockFilm(),
+            onOpenImdbLink = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@Composable
+@Preview(name = "FilmList Light Theme")
+private fun FilmListPreviewLight() {
+    FilmTheme(useDarkTheme = false) {
+        FilmListScreen(
+            listLoaded = true,
+            itemsList = listOf(mockFilm()),
+            resourceEmptyList = R.string.empty_list,
+            onItemClick = {},
+            showDialogSearch = false,
+            onSearchTitleChanged = {},
+            onSearchQntChanged = {},
+            onDismissSearchDialog = {},
+            onApplySearchDialog = {},
+            onSearch = {}
+        )
+    }
+}
+
+@Composable
+@Preview(name = "FilmList Dark Theme")
+private fun FilmListPreviewDark() {
+    FilmTheme(useDarkTheme = true) {
+        FilmListScreen(
+            listLoaded = true,
+            itemsList = listOf(mockFilm()),
+            resourceEmptyList = R.string.empty_list,
+            onItemClick = {},
+            showDialogSearch = false,
+            onSearchTitleChanged = {},
+            onSearchQntChanged = {},
+            onDismissSearchDialog = {},
+            onApplySearchDialog = {},
+            onSearch = {}
         )
     }
 }

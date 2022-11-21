@@ -23,7 +23,7 @@ android {
         versionCode 1
         versionName "1.0"
 
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "com.eastx7.films.AppTestRunner"
     }
 
     buildTypes {
@@ -71,7 +71,7 @@ dependencies {
     //implementation 'androidx.compose.material3:material3-window-size-class'
 
     // Optional - Integration with activities
-    implementation 'androidx.activity:activity-compose:1.5.1'
+    implementation 'androidx.activity:activity-compose:1.6.1'
     // Optional - Integration with ViewModels
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1'
     // Optional - Integration with LiveData
@@ -86,8 +86,10 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:okhttp-urlconnection:5.0.0-alpha.10'
     implementation 'com.squareup.retrofit2:converter-scalars:2.9.0'
-    // Optional - log raw http response
+    // Optional - log raw http response remove in production
     implementation 'com.squareup.okhttp3:logging-interceptor:5.0.0-alpha.10'
+    // Network test
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.10.0")
 
     implementation "androidx.work:work-runtime-ktx:2.7.1"
 
@@ -110,13 +112,19 @@ dependencies {
     implementation "androidx.navigation:navigation-compose:2.5.3"
     implementation "androidx.hilt:hilt-navigation-compose:1.0.0"
 
-    implementation 'androidx.core:core-ktx:1.7.0'
+    implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'com.google.android.material:material:1.7.0'
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.4'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.0'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.5.1'
+    androidTestImplementation "com.google.truth:truth:1.0.1"
+    testImplementation "com.google.truth:truth:1.0.1"
+
+    androidTestImplementation "androidx.test:runner:1.5.1"
+    androidTestImplementation "androidx.test:rules:1.5.0"
+
     // network images
     implementation "com.github.bumptech.glide:compose:1.0.0-alpha.1"
 }

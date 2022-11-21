@@ -27,17 +27,15 @@ interface ApiOmdb {
         @Query("i") id: String,
     ): OmdbFilms
 
-    //i=tt3896198&apikey=cfd1597a
     companion object {
         fun getRetrofitBuilder(cookieManager: CookieManager): Retrofit.Builder {
             //TODO: remove logger in production
-            val logger =
-                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
-            cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL)
-
+//            val logger =
+//                HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+//            cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL)
 
             val client = OkHttpClient.Builder()
-                .addInterceptor(logger)
+//                .addInterceptor(logger)
                 .cookieJar(JavaNetCookieJar(cookieManager))
                 .build()
 
@@ -45,7 +43,6 @@ interface ApiOmdb {
                 .baseUrl(SERVER_URL)
                 .client(client)
         }
-
     }
 }
 
