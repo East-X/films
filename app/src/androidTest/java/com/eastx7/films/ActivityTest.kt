@@ -35,7 +35,7 @@ class FilmListScreenTest {
     }
 
     @Test
-    fun posterDetailsFrozenIILoadingTest() {
+    fun filmListScreenLoadingTest() {
         composeTestRule.setContent {
             FilmTheme {
 
